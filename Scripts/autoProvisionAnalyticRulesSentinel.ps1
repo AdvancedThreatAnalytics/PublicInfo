@@ -35,7 +35,12 @@ Import-Module Az.Accounts
 
 Connect-AzAccount
 
- 
+$subscriptionContext = Get-AzContext -ListAvailable | Out-GridView -PassThru -Title "Choose Subscription Where Your Sentinel Instance is Provisioned In"
+
+Write-Host "Setting Subscription Context"
+
+Set-AzContext -Subscription $subscriptionContext.Subscription
+
 
 #Let user choose the sentinel instance
 $sentinelResource = Get-AzResource -ResourceType "Microsoft.OperationalInsights/workspaces" | Out-GridView -PassThru -Title "Choose Sentinel Resource"
