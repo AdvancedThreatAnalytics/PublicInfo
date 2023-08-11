@@ -37,7 +37,7 @@ Connect-AzAccount
 
 $subscriptionContext = Get-AzContext -ListAvailable | Out-GridView -PassThru -Title "Choose Subscription Where Your Sentinel Instance is Provisioned In"
 
-Write-Host "Setting Subscription Context"
+Write-Host "Setting Subscription Context to" $subscriptionContext.Subscription
 
 Set-AzContext -Subscription $subscriptionContext.Subscription
 
