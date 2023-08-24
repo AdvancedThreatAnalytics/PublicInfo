@@ -1,0 +1,89 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workspace": {
+            "type": "String"
+        }
+    },
+    "resources": [
+        {
+            "id": "[concat(resourceId('Microsoft.OperationalInsights/workspaces/providers', parameters('workspace'), 'Microsoft.SecurityInsights'),'/alertRules/381f672a-34a0-4009-b1b2-602d7f64a288')]",
+            "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/381f672a-34a0-4009-b1b2-602d7f64a288')]",
+            "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+            "kind": "Scheduled",
+            "apiVersion": "2022-11-01-preview",
+            "properties": {
+                "displayName": "New Remote Port Rule Created on NSG",
+                "description": "",
+                "severity": "Medium",
+                "enabled": true,
+                "query": "// New Remote Port Rule Created on NSG\nAzureActivity\n| where OperationName == \"Create or Update Security Rule\"\n| where parse_json(tostring(parse_json(tostring(parse_json(Properties).requestbody)).properties)).destinationPortRange == 3389 or parse_json(tostring(parse_json(tostring(parse_json(Properties).requestbody)).properties)).destinationPortRange == 22\n| extend serverscope_ = tostring(parse_json(Authorization).scope)\n| extend nsgrulename_  = Resource\n| extend destinationPortRange_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).requestbody)).properties)).destinationPortRange)\n| extend sourceAddressPrefix_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).requestbody)).properties)).sourceAddressPrefix)\n| extend direction_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).requestbody)).properties)).direction)\n| extend destinationAddressPrefix_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).requestbody)).properties)).destinationAddressPrefix)\n| extend sourcePortRanges_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).requestbody)).properties)).sourcePortRanges)\n| extend CompromisedEntity = Caller\n| project\n    Caller,\n    nsgrulename_,\n    CallerIpAddress,\n    ResourceGroup,\n    OperationName,\n    serverscope_,\n    sourceAddressPrefix_,\n    sourcePortRanges_,\n    destinationAddressPrefix_,\n    destinationPortRange_,\n    direction_\n",
+                "queryFrequency": "PT1H",
+                "queryPeriod": "PT1H30M",
+                "triggerOperator": "GreaterThan",
+                "triggerThreshold": 0,
+                "suppressionDuration": "PT5H",
+                "suppressionEnabled": false,
+                "startTimeUtc": null,
+                "tactics": [
+                    "LateralMovement",
+                    "Persistence"
+                ],
+                "techniques": [
+                    "T1021",
+                    "T1133"
+                ],
+                "alertRuleTemplateName": null,
+                "incidentConfiguration": {
+                    "createIncident": true,
+                    "groupingConfiguration": {
+                        "enabled": false,
+                        "reopenClosedIncident": false,
+                        "lookbackDuration": "PT5H",
+                        "matchingMethod": "AllEntities",
+                        "groupByEntities": [],
+                        "groupByAlertDetails": [],
+                        "groupByCustomDetails": []
+                    }
+                },
+                "eventGroupingSettings": {
+                    "aggregationKind": "SingleAlert"
+                },
+                "alertDetailsOverride": null,
+                "customDetails": {
+                    "RuleName": "nsgrulename_",
+                    "ResourceGroup": "ResourceGroup",
+                    "ServerScope": "serverscope_",
+                    "sourceAddressPrefix": "sourceAddressPrefix_",
+                    "sourcePortRanges": "sourcePortRanges_",
+                    "destinationAddress": "destinationAddressPrefix_",
+                    "destinationPortRange": "destinationPortRange_",
+                    "direction": "direction_"
+                },
+                "entityMappings": [
+                    {
+                        "entityType": "Account",
+                        "fieldMappings": [
+                            {
+                                "identifier": "Name",
+                                "columnName": "Caller"
+                            }
+                        ]
+                    },
+                    {
+                        "entityType": "IP",
+                        "fieldMappings": [
+                            {
+                                "identifier": "Address",
+                                "columnName": "CallerIpAddress"
+                            }
+                        ]
+                    }
+                ],
+                "sentinelEntitiesMappings": null,
+                "templateVersion": null
+            }
+        }
+    ]
+}
