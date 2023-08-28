@@ -1,6 +1,4 @@
-Set-ExecutionPolicy -ExecutionPolicy Bypass
-
- 
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
 
 #Install AZ
 if(Get-Module -ListAvailable -Name Az.Accounts) {
@@ -10,8 +8,6 @@ else {
     Write-Host "Microsoft.Graph Does Not Exist Installing!!"
     Install-Module Az.Accounts -Scope CurrentUser -Force -Verbose
 }
-
- 
 
  
 
@@ -26,8 +22,6 @@ else {
 
  
 
- 
-
 Import-Module Az.Resources
 Import-Module Az.Accounts
 
@@ -35,11 +29,10 @@ Import-Module Az.Accounts
 
 Connect-AzAccount
 
-$subscriptionContext = Get-AzContext -ListAvailable | Out-GridView -PassThru -Title "Choose Subscription Where Your Sentinel Instance is Provisioned In"
+$subscriptionContext = get-azsubscription | Out-GridView -PassThru -Title "Choose Subscription Where Your Sentinel Instance is Provisioned In"
 
-Write-Host "Setting Subscription Context to" $subscriptionContext.Subscription
-
-Set-AzContext -Subscription $subscriptionContext.Subscription
+Write-Host "Setting Subscription Context to" $subscriptionContext.Name
+Set-AzContext -Subscription $subscriptionContext
 
 
 #Let user choose the sentinel instance
@@ -77,7 +70,7 @@ $headers = @{
  
 
 #Concat variables to create get URI
-$getURI = "https://management.azure.com/subscriptions/"+$subscriptionId+"/resourceGroups/"+$sentinelResourceGroup+"/providers/Microsoft.OperationalInsights/workspaces/"+$sentinelInstance+"/providers/Microsoft.SecurityInsights/alertRuleTemplates?api-version=2023-02-01"
+$getURI = "https://management.azure.com/subscriptions/"+$subscriptionId+"/resourceGroups/"+$sentinelResourceGroup+"/providers/Microsoft.OperationalInsights/workspaces/"+$sentinelInstance+"/providers/Microsoft.SecurityInsights/alertRuleTemplates?api-version=2023-07-01-preview"
 
  
 
@@ -86,13 +79,9 @@ $getURI = "https://management.azure.com/subscriptions/"+$subscriptionId+"/resour
 #Get all avlaiable sentinel templates
 $response = Invoke-RestMethod -Method Get -uri $getURI -Headers $headers
 
- 
+$response = $response.value
 
-$response = $response | Select-Object -ExpandProperty value
 
- 
-
- 
 
 #Loop through and enable all of them
 foreach ($template in $response){
@@ -138,7 +127,10 @@ $techniques = ($template | Select-Object -ExpandProperty properties) | Select-Ob
 
 $query = ($template | Select-Object -ExpandProperty properties) | Select-Object query
 
- 
+
+
+$entityMappings = $template.properties.entityMappings 
+
 
     $Body = @{
         kind = $kindOfRule
@@ -157,14 +149,13 @@ $query = ($template | Select-Object -ExpandProperty properties) | Select-Object 
         description = $description.description
         tactics = $tactics.tactics
         techniques = $techniques.techniques
-
+        entityMappings = $entityMappings
  
 
       }
     }
 
- 
-
+# Construct the final JSON by combining the JSON strings
 
     Write-Host ($Body).kind
     Write-Host "enabled: $($Body.properties.enabled)"
@@ -179,25 +170,21 @@ $query = ($template | Select-Object -ExpandProperty properties) | Select-Object 
     Write-Host "suppressionEnabled: $($Body.properties.suppressionEnabled)"
     Write-Host "displayName: $($Body.properties.displayName)"
     Write-Host "description: $($Body.properties.description)"
-
+    Write-Host "entityMapping" $entityMappings
  
 
-$jsonBody = $Body | ConvertTo-Json
 
- 
+$jsonBody = $Body | ConvertTo-Json -Depth 10
 
 #create put URI
-$putURI = "https://management.azure.com/subscriptions/"+$subscriptionId+"/resourceGroups/"+$sentinelResourceGroup+"/providers/Microsoft.OperationalInsights/workspaces/"+$sentinelInstance+"/providers/Microsoft.SecurityInsights/alertRules/" + $displayName.displayName + '?api-version=2023-02-01'
+$putURI = "https://management.azure.com/subscriptions/"+$subscriptionId+"/resourceGroups/"+$sentinelResourceGroup+"/providers/Microsoft.OperationalInsights/workspaces/"+$sentinelInstance+"/providers/Microsoft.SecurityInsights/alertRules/" + $displayName.displayName + '?api-version=2023-07-01-preview'
 
  
 
 $encodedUrl = [System.Uri]::EscapeUriString($putURI) #Fix whitespace Issue on Analytic Rule Display Name
 
  
-
-Invoke-RestMethod -uri $encodedUrl -Method Put -Headers $headers -Body $jsonBody
-
- 
+Invoke-RestMethod -uri $encodedUrl -Method Put -Headers $headers -Body $jsonBody 
 
  
 
