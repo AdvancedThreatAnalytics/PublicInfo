@@ -1,6 +1,4 @@
-﻿Set-ExecutionPolicy -ExecutionPolicy Bypass
-
- 
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
 
 #Install AZ
 if(Get-Module -ListAvailable -Name Az.Accounts) {
@@ -13,8 +11,6 @@ else {
 
  
 
- 
-
 #Install AZ.Resource
 if(Get-Module -ListAvailable -Name Az.Resources) {
     Write-Host "Az.Resources Module Exists Moving On!"
@@ -23,8 +19,6 @@ else {
     Write-Host "Az.Resources Does Not Exist Installing!!"
     Install-Module Az.Resources -Scope CurrentUser -Force -Verbose
 }
-
- 
 
  
 
@@ -85,12 +79,7 @@ $getURI = "https://management.azure.com/subscriptions/"+$subscriptionId+"/resour
 #Get all avlaiable sentinel templates
 $response = Invoke-RestMethod -Method Get -uri $getURI -Headers $headers
 
-
-$response = $response| Select-Object -ExpandProperty properties
-
- 
-
-
+$response = $response.value
 
 
 
@@ -140,57 +129,7 @@ $query = ($template | Select-Object -ExpandProperty properties) | Select-Object 
 
 
 
-#$entityPSObject = @{
- 
-   # "entityType" = $entityType
-   # "fieldMappings" = @(
-   #     @{
-  #          "identifier" = "FullName"
-  #          "columnName" = "Computer"
-#}
-  #  )
-
-#}
-
-#$template.properties.entityMappings[1] | Select-Object -ExpandProperty fieldMappings
-
-<#------
-foreach ($entityMap in $template.properties.entityMappings[0]) { # Look at the first index on position zero to grab unique entity types.
-    #Write-Host $entitymap.entityType
-    #$template.properties.entityMappings | Select-Object entityType
-   # $template.properties.entityMappings
-    foreach ($entityMap in $template.properties.entityMappings[1] ){
-         
-         write-host $entityMap.entityType
-         $entityPSObject["entityType"] += $entityMap.entityType  
-
-         foreach ($fieldmapping in $entityMap.fieldMappings){
-
-            write-host $fieldmapping.columnName
-            write-host $fieldmapping.identifier
-            $newFieldMapping = @{
-                "identifier" = $fieldmapping.identifier
-                "columnName" = $fieldmapping.columnName
-            }
-         
-          $entityPSObject["fieldMappings"] += $newFieldMapping
-         }
-         #$entityMap.fieldMappings
-         #$entitymap.fieldMappings
-         #Write-Host "INTERATION ##################################"
-         #Write-Host $entitymap[0].columnName
-         #Write-Host $entitymap[0].identifier
-    }
-}
-
----#>
-
-
 $entityMappings = $template.properties.entityMappings 
-
- 
-#$entityMappingsJson = $entityMappings | ConvertTo-Json -Depth 4
-
 
 
     $Body = @{
@@ -249,7 +188,4 @@ Invoke-RestMethod -uri $encodedUrl -Method Put -Headers $headers -Body $jsonBody
 
  
 
- 
-
 }
-
