@@ -16,16 +16,14 @@ $response = Invoke-RestMethod -Method Post -Uri $oAuthUri -Body $body -ErrorActi
 $aadToken = $response.access_token
 #$aadToken
 
-#Grab CSV Data
+# Add CSV Path
 $csvPath = ""
 
-
-#Grab Tag Name for MDE
-$tagName = ""
+#Add Tag Name
+$tagName = ''
 
 #Assuming header in CSV is called "name"
 $devices = Import-Csv -Path $csvPath
-
 
 #URI and Header to Get Machine ID <- Added the ? here since it didn't take even when escaping the variable $filter
 $deviceIdUri = "https://api.securitycenter.windows.com/api/machines?"
@@ -34,11 +32,21 @@ $headers = @{
     'Content-Type' = 'application/json'
     Accept = 'application/json'
     Authorization = "Bearer $aadToken" 
-}
+    }
 
-$devices.name | ForEach-Object{
+# to remove the tag change the action to "Remove" <- this is case sensitive 
 
-$defenderURI = "$deviceIdUri`$filter=contains(computerDNSname, '$_')"
+$body = @{
+    "Value" = $tagName
+    "Action" = "Add"
+} | ConvertTo-Json
+
+
+$deviceName = $devices.Name 
+
+ ForEach ($device in $deviceName){
+
+$defenderURI = "$deviceIdUri`$filter=contains(computerDNSname, `'$device')"
 
 
 #Create web request then store machine ID in $machineID
@@ -46,17 +54,17 @@ $webResponse = Invoke-WebRequest -Method Get -Uri $defenderURI -Headers $headers
 $response = $webResponse | Select-Object -ExpandProperty content | ConvertFrom-Json
 $machineID =  $response.value.id
 
+Write-host $device "device ID is" $machineID
+
 #Create web request then store machine ID in $machineID
 $tagURI = 'https://api.securitycenter.microsoft.com/api/machines/'+$machineID+'/tags'
-   $body = '{
-      "Value" : "'+$tagName+'",
-      "Action": "Add"
 
-# Action type to remove a tag is "Remove"
+write-host $tagURI
+  
 
-    }'
-    #Apply Tag to Machine in MDE
-    $webResponse2 = Invoke-WebRequest -Method Post -Uri $tagURI -Headers $headers -Body $body  -ErrorAction Stop 
-    write-host "API Request Status is"  $webResponse.StatusDescription "`n"
+#Apply Tag to Machine in MDE
+$webResponse2 = Invoke-WebRequest -Method Post -Uri $tagURI -Headers $headers -Body $body  -ErrorAction Stop
+write-host "API Request Status is"  $webResponse.StatusDescription" "$tagName "added or removed from" $device "`n"
+
 
 }
