@@ -1,10 +1,6 @@
-#Bypass Execution Policy
-Set-ExecutionPolicy -ExecutionPolicy Bypass
-#Install Graph
-if(Get-Module -ListAvailable -Name Microsoft.Graph) {
-    Write-Host "Uninstall old Graph Modules and installing new ones!"
-    
-    $Modules = Get-Module Microsoft.Graph* -ListAvailable | Where {$_.Name -ne "Microsoft.Graph.Authentication"} | Select-Object Name -Unique
+
+ Write-Host "Uninstall old Microsoft.Graph Modules that cause conflicts"
+ $Modules = Get-Module Microsoft.Graph* -ListAvailable 
     Foreach ($Module in $Modules)
     {
         $ModuleName = $Module.Name
@@ -16,39 +12,27 @@ if(Get-Module -ListAvailable -Name Microsoft.Graph) {
             Uninstall-Module $ModuleName -RequiredVersion $ModuleVersion
         }
     }
-    #Uninstall Microsoft.Graph.Authentication
-    $ModuleName = "Microsoft.Graph.Authentication"
-    $Versions = Get-Module $ModuleName -ListAvailable
-    Foreach ($Version in $Versions)
-    {
-        $ModuleVersion = $Version.Version
-        Write-Host "Uninstall-Module $ModuleName $ModuleVersion"
-        Uninstall-Module $ModuleName -RequiredVersion $ModuleVersion
-    }
 
-}
-else {
-    Write-Host "Microsoft.Graph Does Not Exist Installing!!"
-    Install-Module Microsoft.Graph -Scope CurrentUser -Force -Verbose
-}
+Write-Host "Installing Microsoft.Graph.Applications 2.5.0"
+Install-Module Microsoft.Graph.Applications -Scope CurrentUser -RequiredVersion 2.5.0 -Force -Verbose
 
-#Connect
+
+
+
 Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All", "Application.Read.All" -ContextScope Process
-#Select-MgProfile Beta
 
 #Get Managed Identity
-$ManagedIdentityApp = (Get-MgServicePrincipal | Where-Object -FilterScript {$_.ServicePrincipalType -EQ 'ManagedIdentity'} ) |  Out-GridView -PassThru -Title "Choose Managed Identity"
+$ManagedIdentityApp = (Get-MgServicePrincipal -all | Where-Object -FilterScript {$_.ServicePrincipalType -EQ 'ManagedIdentity'} ) |  Out-GridView -PassThru -Title "Choose Managed Identity"
 
 
 #Get App ID
-#$AppID = Get-MgServicePrincipal -all | Where-Object -FilterScript {$_.PublisherName -EQ 'Microsoft Services'} | Out-GridView -PassThru -Title "Choose App ID"
 
-$AppID = Get-MgServicePrincipal -all | Out-GridView -PassThru -Title "Choose App ID"
+$AppID = Get-MgServicePrincipal -all | Where-Object -FilterScript {$_.ServicePrincipalType -EQ 'Application'}  | Out-GridView -PassThru -Title "Choose App ID"
 
 $arrayOfAppRoles = @()
 
 #Get App Roles
-$arrayOfAppRoles += ($AppID.AppRoles | Select-Object DisplayName, Value) |  Out-GridView -PassThru -Title "You Can Choose Multiple App Roles Just Hold CTRL and Right Click Multiple Values"
+$arrayOfAppRoles += ($AppID.AppRoles | Select-Object DisplayName, Value) |   Out-GridView -PassThru -Title "You Can Choose Multiple App Roles Just Hold CTRL and Right Click Multiple Values"
 
 
 #Loop Through chosen App Roles and apply to Managed Identity
