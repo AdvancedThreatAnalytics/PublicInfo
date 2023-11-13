@@ -1,21 +1,20 @@
+# Check if the Microsoft.Graph module version 2.5.0 is installed
+$module = Get-Module -Name  Microsoft.Graph.Applications -ListAvailable | Where-Object { $_.Version -eq '2.5.0' }
 
- Write-Host "Uninstall old Microsoft.Graph Modules that cause conflicts"
- $Modules = Get-Module Microsoft.Graph* -ListAvailable 
-    Foreach ($Module in $Modules)
-    {
-        $ModuleName = $Module.Name
-        $Versions = Get-Module $ModuleName -ListAvailable
-        Foreach ($Version in $Versions)
-        {
-            $ModuleVersion = $Version.Version
-            Write-Host "Uninstall-Module $ModuleName $ModuleVersion"
-            Uninstall-Module $ModuleName -RequiredVersion $ModuleVersion
-        }
-    }
+if ($module -eq $null) {
+    # Module is not installed, install it
+    Write-Host "Microsoft.Graph 2.5.0 is not installed. Installing..." -ForegroundColor Red -BackgroundColor Blue
+    Install-Module -Name  Microsoft.Graph.Applications -RequiredVersion 2.5.0 -Force -Scope CurrentUser
+    Write-Host "Installation complete."
+}
+else {
+    # Module is already installed
+    Write-Host "Microsoft.Graph Applications 2.5.0 is already installed." -ForegroundColor Green -BackgroundColor Blue
+}
 
-Write-Host "Installing Microsoft.Graph.Applications 2.5.0"
-Install-Module Microsoft.Graph.Applications -Scope CurrentUser -RequiredVersion 2.5.0 -Force -Verbose
 
+
+Import-Module Microsoft.Graph.Applications -RequiredVersion 2.5.0
 
 
 
