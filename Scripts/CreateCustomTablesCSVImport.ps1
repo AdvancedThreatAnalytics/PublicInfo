@@ -12,7 +12,8 @@ $csvData = Import-Csv -Path $csvFilePath
 # Define the custom log table schema based on the CSV file
 $TableSchema = $csvData | ForEach-Object {
     if ($_.DataType -match "String") { $azType = "string" }
-    elseif ($_.DataType -match "Int" -or $_.DataType -match "Long") { $azType = "long" }
+    elseif ($_.DataType -match "Int64") {$azType = "long"}
+    elseif ($_.DataType -match "Int32") {$azType = "int"}
     elseif ($_.DataType -match "DateTime") { $azType = "datetime" }
     elseif ($_.DataType -match "Double" -or $_.DataType -match "Single") { $azType = "real" }
     elseif ($_.DataType -match "Boolean") { $azType = "bool" }
