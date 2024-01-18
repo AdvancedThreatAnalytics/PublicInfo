@@ -1,0 +1,12 @@
+SigninLogs
+| where TimeGenerated > ago(30d)
+| extend CA = parse_json(ConditionalAccessPolicies) // Converts JSON into Array
+| mv-expand bagexpansion=array CA // mv-expand operator is used to expand multi-valued fields into separate rows, bagexpansion states what data type we are working with in this case an Array.
+| evaluate bag_unpack(CA) // unpacks the properties of the CA column into separate columns
+| extend
+    ['CA Outcome']=tostring(column_ifexists('result', "")), // Renames Result to "CA Outcome" if it doesn't default to an empty string
+    ['CA Policy Name'] = column_ifexists('displayName', "")
+| evaluate pivot(['CA Outcome'], count(), ['CA Policy Name'])
+// Each unique value in the 'CA Outcome' column will create a separate column in the pivot table.
+// Counting the number of occurrences of each unique 'CA Outcome' for every unique 'CA Policy Name'.
+//For each unique value in 'CA Policy Name', the pivot operation will create a row in the resulting table.
