@@ -1,0 +1,26 @@
+// Create a list of known recipients from the past 30 days where mail was delivered to receipiant
+// Include 30 days worth of data NOT including data from today
+let startOfLookBack = startofday(ago(30d));
+let endOfLookBack = startofday(now());
+let knownSenders = materialize (
+EmailEvents
+| where TimeGenerated >= startOfLookBack and TimeGenerated < endOfLookBack
+| where  DeliveryAction == "Delivered"
+| distinct SenderFromAddress);
+//Grab supicious Subjects from External Data Feed
+let supiciousSubjects = (externaldata(Keywords: string )
+[@"https://raw.githubusercontent.com/cyb3rmik3/Hunting-Lists/main/phishing-keywords.csv"]
+with (format="csv"))
+| where Keywords <> "Keywords"
+| project Keywords;
+let keywordArray = toscalar( // We need to transform a tabular result(The Table), into a scalar value to be used in the contains field in this case to an array
+    supiciousSubjects
+    | summarize make_list(Keywords) // This will convert the tabluar value to an Array
+);
+EmailEvents
+| where TimeGenerated > ago(7d)
+| extend keywordArray = keywordArray
+| mv-expand keywordArray to typeof(string) // Create a new row per keyword and converting to the string data type to be compared with the contains operator
+| where Subject contains (keywordArray)
+|join kind=leftanti (knownSenders) on SenderFromAddress // Negate known senders from 30 days back not including the senders received today
+| distinct Subject, SenderFromAddress, RecipientEmailAddress
