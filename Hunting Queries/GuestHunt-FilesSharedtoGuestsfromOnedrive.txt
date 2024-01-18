@@ -1,0 +1,8 @@
+OfficeActivity
+| where TimeGenerated > ago(7d)
+| where OfficeWorkload == "OneDrive"
+| where Operation in ("SecureLinkCreated", "AddedToSecureLink")
+| where TargetUserOrGroupType == "Guest" or TargetUserOrGroupName contains "#EXT#"
+| project TimeGenerated,UserId, TargetUserOrGroupName,OfficeObjectId
+| extend Account_0_Name = TargetUserOrGroupName
+| extend CloudApplication_0_Name = OfficeObjectId
