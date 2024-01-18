@@ -1,0 +1,9 @@
+AuditLogs
+| where ActivityDisplayName == "Invite external user"
+| extend initiatedBy = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)
+| extend InvitedUser = tostring(AdditionalDetails[5].value)
+| extend ObjectId = tostring(TargetResources[0].id)
+| extend RefObjectId = tostring(parse_json(tostring(InitiatedBy.user)).id)
+| project initiatedBy, InvitedUser, ObjectId, RefObjectId
+| extend Account_0_Name = initiatedBy
+| extend Account_1_Name = InvitedUser
