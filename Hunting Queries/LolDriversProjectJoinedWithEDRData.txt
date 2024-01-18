@@ -1,0 +1,9 @@
+// Credit to loldrivers for feed data https://www.loldrivers.io/
+let lolDrivers = (externaldata(Id: string, Author : string, Created : string, Command : string , Description : string, Usecase : string, Category : string, Priviledges : string, MitreID : string, OperatingSystem : string, Resource : string, DriverDes : string, Person : string , Handle : string, Detection : string, KnownVulnerableSamples_MD5 : string , KnownVulnerableSamples_SHA1
+ : string  )
+[@"https://www.loldrivers.io/api/drivers.csv"]
+with (format="csv"))
+| project Created, Resource, KnownVulnerableSamples_SHA1;
+lolDrivers
+| sort by Created desc 
+| join kind=inner DeviceImageLoadEvents on $left.KnownVulnerableSamples_SHA1==$right.SHA1
