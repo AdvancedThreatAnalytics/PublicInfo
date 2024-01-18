@@ -1,0 +1,17 @@
+let start = ago(12h);
+let end = now(); 
+let lookbackWindow = 3h;  
+let bin = 1h;
+let threshold = 2;
+SigninLogs
+| where TimeGenerated between (start .. end)
+| where ResultType in ("50126", "50074") // 50126 - Invalid username or password or Invalid on-premise username or password.  50074 - Strong Authentication is required.
+// Parameter Notes for Sliding Window
+//(UPN Is used to count the distinct occurances,Time per occurance, Start through End would be the lookback period, Look between buckets of 3 hour increments per chunk, analyze data within 1 hour buckets per chunk, IPAddress counts and distinct counts are calculated separately for each IP address)
+| evaluate sliding_window_counts(UserPrincipalName, TimeGenerated, start, end, lookbackWindow, bin, IPAddress)
+| sort by IPAddress, TimeGenerated asc
+| where Dcount > threshold
+// | where TimeGenerated between (start .. end)
+// | where ResultType in ("50126", "50074") // 50126 - Invalid username or password or Invalid on-premise username or password.  50074 - Strong Authentication is required.
+// | where IPAddress == "73.208.91.249"
+// | summarize count() by  UserPrincipalName, IPAddress
