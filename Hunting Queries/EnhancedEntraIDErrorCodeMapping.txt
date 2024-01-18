@@ -1,0 +1,9 @@
+let ResolvedErrorCodes = externaldata(code: string, Message: string)['https://raw.githubusercontent.com/f-bader/EntraID-ErrorCodes/main/EntraIDErrorCodes.json'] with (format='multijson');
+SigninLogs
+| where ResultType != 0
+| lookup ResolvedErrorCodes on $left.ResultType == $right.code
+// The iff statement sets ResultDescription to a detailed message from ResolvedErrorCodes if ResultDescription is "Other" and a relevant message exists; otherwise, it keeps ResultDescription as is or sets it to "Other".
+// The structure iff(condition, true_expression, false_expression)
+| extend ResultDescription = iff(ResultDescription == "Other",iff(isempty(Message),"Other",Message),ResultDescription)
+| project-away Message
+| project-reorder TimeGenerated, ResultType, ResultDescription
