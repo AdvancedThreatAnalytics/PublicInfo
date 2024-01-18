@@ -1,0 +1,9 @@
+let binaries = externaldata(filename:string, description:string, author:string, loldate:datetime , command:string, commanddesc:string, commanduse:string, commandcat:string, commandprivs:string, mitre:string, os:string, paths:string, detections:string, resources:string, acknowledge:string, url:string)[@"https://lolbas-project.github.io/api/lolbas.csv"] with (format="csv", ignoreFirstRecord=true);
+let lolbinexe = binaries
+| project filename,description,command,commanddesc, commanduse;
+DeviceProcessEvents
+| where InitiatingProcessAccountName <> "system" // We are looking for esclation of privledge that shouldn't originiate with the system account
+| join kind=inner lolbinexe on $left.FileName==$right.filename
+| project filename,description,command,commanddesc, commanduse, DeviceName, ProcessCommandLine
+, InitiatingProcessAccountName
+
