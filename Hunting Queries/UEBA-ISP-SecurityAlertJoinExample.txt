@@ -1,0 +1,9 @@
+let threeHoursBack = datetime_add('hour', -3, now());
+BehaviorAnalytics
+| where TimeGenerated > ago(1h)
+| where ActionType in ("Sign-in", "InteractiveLogon", "ResourceAccess", "User did not pass the MFA challenge", "User did not pass the MFA challenge (non interactive)")
+| where isnotempty(ActivityInsights)
+| extend ActivityInsightsParsed = todynamic(ActivityInsights)
+| where ActivityInsightsParsed.FirstTimeUserConnectedViaISP == true or ActivityInsightsParsed.ISPUncommonlyUsedByUser == true or ActivityInsightsParsed.ISPUncommonlyUsedAmongPeers == true or ActivityInsightsParsed.FirstTimeConnectionViaISPInTenant == true or ActivityInsightsParsed.ISPUncommonlyUsedInTenant == true 
+| join kind=inner SecurityAlert on $left.UserPrincipalName==$right.CompromisedEntity
+| where TimeGenerated1 between (threeHoursBack .. now())
