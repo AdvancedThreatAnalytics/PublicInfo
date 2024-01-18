@@ -1,0 +1,7 @@
+let normalKVOperations = AzureActivity
+| where TimeGenerated > ago(30d)
+| where ResourceProviderValue == "MICROSOFT.KEYVAULT"
+| distinct CallerIpAddress, Caller;
+AzureActivity
+| distinct CallerIpAddress, Caller
+| join kind=rightanti (normalKVOperations) on CallerIpAddress, Caller
