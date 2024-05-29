@@ -49,4 +49,4 @@ Add-MpPreference -AttackSurfaceReductionRules_Ids "b2b3f03d-6a65-4f7b-a9c7-1c7ef
 Add-MpPreference -AttackSurfaceReductionRules_Ids "c0033c00-d16d-4114-a5a0-dc9b3a7d2ceb" -AttackSurfaceReductionRules_Actions Audit
 
 # Block Webshell creation for Servers
-Add-MpPreference -AttackSurfaceReductionRules_Ids "a8f5898e-1dc8-49a9-9878-85004b8a61"
+Add-MpPreference -AttackSurfaceReductionRules_Ids "a8f5898e-1dc8-49a9-9878-85004b8a61" -AttackSurfaceReductionRules_Actions Audit
