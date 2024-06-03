@@ -1,0 +1,26 @@
+// List of targeted devices
+let targetedDevices = materialize(
+    DeviceInfo
+    | where MachineGroup in~ ("G1", "G2")
+    | distinct DeviceName
+);
+// Devices that ran a quick scan
+let devicesWithQuickScan = materialize(
+    DeviceEvents
+    | join kind=inner (targetedDevices) on DeviceName  // Filtering to targeted devices
+    | extend scanType = tostring(parse_json(AdditionalFields).ScanTypeIndex)
+    | where scanType == "Quick"
+    | summarize LatestQuickScan = max(Timestamp) by DeviceName
+);
+// Devices that ran a full scan
+let devicesWithFullScan = materialize(
+    DeviceEvents
+    | join kind=inner (targetedDevices) on DeviceName  // Filtering to targeted devices
+    | extend scanType = tostring(parse_json(AdditionalFields).ScanTypeIndex)
+    | where scanType == "Full"
+    | summarize LatestFullScan = max(Timestamp) by DeviceName
+);
+// Find devices in the targeted list that ran a quick scan but not a full scan
+devicesWithQuickScan
+| join kind=anti (devicesWithFullScan) on DeviceName
+| project DeviceName, LatestQuickScan
