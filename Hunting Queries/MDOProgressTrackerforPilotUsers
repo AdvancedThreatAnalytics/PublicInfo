@@ -1,0 +1,16 @@
+let pilotUsers = materialize (
+CloudAppEvents
+| where Timestamp > ago(90d)
+| where ActionType == @"Add member to group."
+| extend userAdded = tostring(RawEventData.ObjectId)
+| extend parsedRawEventsData = parse_json(RawEventData)
+| mv-expand ModifiedProperties = parsedRawEventsData.ModifiedProperties
+| extend ModifiedProperty = parse_json(ModifiedProperties)
+| where ModifiedProperty.Name == "Group.DisplayName"
+| extend GroupDisplayName = ModifiedProperty.NewValue
+| where GroupDisplayName == "MDO_Pilot_Group" // Change this to the Pilot Group
+| distinct userAdded);
+EmailEvents
+| where DeliveryAction != "Delivered"
+| where Timestamp > ago(2d)
+| where RecipientEmailAddress in (pilotUsers)
