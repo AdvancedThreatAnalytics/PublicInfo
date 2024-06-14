@@ -1,0 +1,9 @@
+let SnowflakeIocs = externaldata(
+    IP_Address: string
+)
+[@"https://raw.githubusercontent.com/CriticalStartPS/PublicInfo/main/Iocs/snowflakeiocs.csv"]
+with (format="csv")
+| project IP_Address;
+let IPList = toscalar(SnowflakeIocs | summarize make_list(IP_Address));
+DeviceNetworkEvents
+| where IPAddress in (IPList)
