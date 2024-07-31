@@ -1,9 +1,5 @@
-
 Install-Module Az.ConnectedMachine
-
 connect-azaccount
-
-
 
 # Define the target versions for the extensions check here for version number https://learn.microsoft.com/en-us/azure/azure-monitor/agents/azure-monitor-agent-extension-versions
 $targetVersionWindows = "1.29"
