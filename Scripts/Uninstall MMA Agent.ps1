@@ -1,4 +1,5 @@
-﻿$AzureVMs = Get-AzVM
+connect-azaccount
+ $AzureVMs = Get-AzVM
 foreach ($VM in $AzureVMs) {
     try {
         $extensions = Get-AzVMExtension -ResourceGroupName $VM.ResourceGroupName -VMName $VM.Name
