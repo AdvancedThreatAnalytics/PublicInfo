@@ -84,7 +84,6 @@ $tokenResponse = Get-MsalToken @params
 $token = $tokenResponse.AccessToken
 
 # Import the CSV file
-$csvPath = "C:\Users\JohnnyMonteleone\OneDrive - Critical Start\Desktop\excludeexample.csv"
 $csvData = Import-Csv -Path $csvPath
 
 # Extract paths, processes, and extensions from the CSV file
