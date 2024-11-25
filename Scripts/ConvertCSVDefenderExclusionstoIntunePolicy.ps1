@@ -1,4 +1,4 @@
-﻿# Function to display the menu and get user input
+# Function to display the menu and get user input
 function Show-Menu {
     param (
         [string]$prompt
@@ -46,7 +46,7 @@ if (-not (Test-Path -Path $csvPath)) {
     exit
 }
 
-# Function to check if a module is installed
+# Import the necessary modules if not already installed
 function Check-Module {
     param (
         [string]$ModuleName
@@ -62,6 +62,10 @@ function Check-Module {
 # Check and install necessary modules if not already installed
 Check-Module -ModuleName "Microsoft.Graph"
 Check-Module -ModuleName "MSAL.PS"
+
+# Import the modules
+Import-Module Microsoft.Graph
+Import-Module MSAL.PS
 
 # Authenticate with Microsoft Graph
 # This will open a sign-in window where you can enter your credentials
@@ -108,13 +112,15 @@ $policy = @{
                 "settingInstanceTemplateReference" = @{
                     "settingInstanceTemplateId" = "aaf04adc-c639-464f-b4a7-152e784092e8"
                 }
-                "simpleSettingCollectionValue" = $paths | ForEach-Object {
-                    @{
-                        "@odata.type" = "#microsoft.graph.deviceManagementConfigurationStringSettingValue"
-                        "settingValueTemplateReference" = $null
-                        "value" = $_
+                "simpleSettingCollectionValue" = @(
+                    $paths | ForEach-Object {
+                        @{
+                            "@odata.type" = "#microsoft.graph.deviceManagementConfigurationStringSettingValue"
+                            "settingValueTemplateReference" = $null
+                            "value" = $_
+                        }
                     }
-                }
+                )
             }
         },
         @{
@@ -125,13 +131,15 @@ $policy = @{
                 "settingInstanceTemplateReference" = @{
                     "settingInstanceTemplateId" = "96b046ed-f138-4250-9ae0-b0772a93d16f"
                 }
-                "simpleSettingCollectionValue" = $processes | ForEach-Object {
-                    @{
-                        "@odata.type" = "#microsoft.graph.deviceManagementConfigurationStringSettingValue"
-                        "settingValueTemplateReference" = $null
-                        "value" = $_
+                "simpleSettingCollectionValue" = @(
+                    $processes | ForEach-Object {
+                        @{
+                            "@odata.type" = "#microsoft.graph.deviceManagementConfigurationStringSettingValue"
+                            "settingValueTemplateReference" = $null
+                            "value" = $_
+                        }
                     }
-                }
+                )
             }
         },
         @{
@@ -142,13 +150,15 @@ $policy = @{
                 "settingInstanceTemplateReference" = @{
                     "settingInstanceTemplateId" = "c203725b-17dc-427b-9470-673a2ce9cd5e"
                 }
-                "simpleSettingCollectionValue" = $extensions | ForEach-Object {
-                    @{
-                        "@odata.type" = "#microsoft.graph.deviceManagementConfigurationStringSettingValue"
-                        "settingValueTemplateReference" = $null
-                        "value" = $_
+                "simpleSettingCollectionValue" = @(
+                    $extensions | ForEach-Object {
+                        @{
+                            "@odata.type" = "#microsoft.graph.deviceManagementConfigurationStringSettingValue"
+                            "settingValueTemplateReference" = $null
+                            "value" = $_
+                        }
                     }
-                }
+                )
             }
         }
     )
@@ -164,6 +174,16 @@ $policy = @{
 $policyJson = $policy | ConvertTo-Json -Depth 10
 
 # Create the policy
-Invoke-RestMethod -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $policyJson -ContentType "application/json" -Headers @{
-    Authorization = "Bearer $token"
+try {
+    $response = Invoke-RestMethod -Method POST -Uri "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Body $policyJson -ContentType "application/json" -Headers @{
+        Authorization = "Bearer $token"
+    }
+    Write-Host "Policy created successfully."
+} catch {
+    Write-Host "Error: $($_.Exception.Message)"
+    if ($_.Exception.Response -ne $null) {
+        $responseStream = [System.IO.StreamReader]::new($_.Exception.Response.GetResponseStream())
+        $responseBody = $responseStream.ReadToEnd()
+        Write-Host "Response: $responseBody"
+    }
 }
