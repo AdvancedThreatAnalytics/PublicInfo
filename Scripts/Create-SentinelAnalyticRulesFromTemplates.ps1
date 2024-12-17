@@ -101,7 +101,7 @@ if ($InputFile)
         throw "Input file not found: $InputFile"
     }
     Write-Host "Reading template IDs from $InputFile" -ForegroundColor Cyan
-    $templateIds = Get-Content $InputFile
+    $templateIds = (Get-Content $InputFile).Name
     $templates = $templates | Where-Object { $templateIds -contains $_.AlertRuleTemplateName }
     Write-Host "Found $($templates.Count) matching templates from input file" -ForegroundColor Green
 }
