@@ -1,3 +1,10 @@
+#Run the following Query in Sentinel to get the Analytic Rule ID Export and name it analyticruleID.csv in the scripts working directory
+
+#SentinelHealth
+#| where TimeGenerated > ago(1d)
+#| where OperationName in~ ("Scheduled analytics rule run","NRT analytics rule run") 
+#| distinct SentinelResourceId
+
 # Import the necessary module
 Import-Module Az.Accounts 
 
