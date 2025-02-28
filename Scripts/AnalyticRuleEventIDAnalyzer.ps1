@@ -8,7 +8,7 @@
 # Import the necessary module
 Import-Module Az.Accounts 
 
-Connect-AzAccount -TenantId "Add Tenant ID HERE"
+Connect-AzAccount -TenantId "TenantID"
 
 # Authenticate and get the access token
 $accessToken = (Get-AzAccessToken).Token  
