@@ -3,17 +3,17 @@
 # Check if running in PowerShell 7
 if ($PSVersionTable.PSVersion.Major -lt 7) {
     Write-Host "PowerShell 7 is required. Checking if it's installed..."
-
+    
     # Check if winget is available
     try {
         $null = Get-Command winget -ErrorAction Stop
-
+        
         # Check if PowerShell 7 is already installed but not being used
         $psPath = "${env:ProgramFiles}\PowerShell\7\pwsh.exe"
         if (-not (Test-Path $psPath)) {
             Write-Host "Installing PowerShell 7..."
             winget install --id Microsoft.PowerShell --source winget --accept-source-agreements
-
+            
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "PowerShell 7 installed successfully. Please restart this script using PowerShell 7."
             } else {
@@ -54,16 +54,12 @@ if (-not $exchangeModule) {
                     exit 1
                 }
 
-                # Check if module was installed via PowerShellGet
-                $modulePath = $exchangeModule.Path
-                if ($modulePath -like "*\WindowsPowerShell\Modules\*" -or $modulePath -like "*\PowerShell\Modules\*") {
-                    Update-Module -Name ExchangeOnlineManagement -Force
-                } else {
-                    # Alternative: Uninstall and reinstall if not installed via PowerShellGet
-                    Write-Host "Module not installed via PowerShellGet. Performing fresh installation..."
-                    Uninstall-Module -Name ExchangeOnlineManagement -AllVersions -Force -ErrorAction SilentlyContinue
-                    Install-Module -Name ExchangeOnlineManagement -Force -AllowClobber
-                }
+                Write-Host "Removing existing ExchangeOnlineManagement module..."
+                Remove-Module -Name ExchangeOnlineManagement -Force -ErrorAction SilentlyContinue
+                Get-Module -Name ExchangeOnlineManagement -ListAvailable | Uninstall-Module -Force -ErrorAction SilentlyContinue
+                
+                Write-Host "Installing latest version of ExchangeOnlineManagement..."
+                Install-Module -Name ExchangeOnlineManagement -Force -AllowClobber
                 Write-Host "ExchangeOnlineManagement module updated successfully."
             }
             catch {
@@ -86,12 +82,113 @@ $auditParams = @{
     AuditOwner = @{add='Update, Move, MoveToDeletedItems, SoftDelete, HardDelete, Create, MailboxLogin, UpdateFolderPermissions, AddFolderPermissions, ModifyFolderPermissions, RemoveFolderPermissions, UpdateInboxRules, UpdateCalendarDelegation, RecordDelete, ApplyRecord, MailItemsAccessed, UpdateComplianceTag, Send, SearchQueryInitiated, AttachmentAccess, PriorityCleanupDelete, ApplyPriorityCleanup, PreservedMailItemProactively'}
 }
 
+# Check for missing audit settings
+Write-Host "Checking for missing audit settings..."
+$defaultAuditAdmin = @(
+    "Update",
+    "MoveToDeletedItems",
+    "SoftDelete",
+    "HardDelete",
+    "SendAs",
+    "SendOnBehalf",
+    "Create",
+    "UpdateFolderPermissions",
+    "UpdateInboxRules",
+    "UpdateCalendarDelegation",
+    "ApplyRecord",
+    "MailItemsAccessed",
+    "Send"
+)
+
+$defaultAuditDelegate = @(
+    "Update",
+    "MoveToDeletedItems",
+    "SoftDelete",
+    "HardDelete",
+    "SendAs",
+    "SendOnBehalf",
+    "Create",
+    "UpdateFolderPermissions",
+    "UpdateInboxRules",
+    "ApplyRecord",
+    "MailItemsAccessed"
+)
+
+$defaultAuditOwner = @(
+    "Update",
+    "MoveToDeletedItems",
+    "SoftDelete",
+    "HardDelete",
+    "UpdateFolderPermissions",
+    "UpdateInboxRules",
+    "UpdateCalendarDelegation",
+    "ApplyRecord",
+    "MailItemsAccessed",
+    "Send"
+)
+
+$desiredAuditAdmin = $auditParams.AuditAdmin.add -split ', '
+$desiredAuditDelegate = $auditParams.AuditDelegate.add -split ', '
+$desiredAuditOwner = $auditParams.AuditOwner.add -split ', '
+
+$missingAdminSettings = $desiredAuditAdmin | Where-Object { $_ -notin $defaultAuditAdmin }
+$missingDelegateSettings = $desiredAuditDelegate | Where-Object { $_ -notin $defaultAuditDelegate }
+$missingOwnerSettings = $desiredAuditOwner | Where-Object { $_ -notin $defaultAuditOwner }
+
+Write-Host "`nAdditional AuditAdmin settings to be added:"
+$missingAdminSettings | ForEach-Object { Write-Host "- $_" -ForegroundColor Yellow }
+
+Write-Host "`nAdditional AuditDelegate settings to be added:"
+$missingDelegateSettings | ForEach-Object { Write-Host "- $_" -ForegroundColor Yellow }
+
+Write-Host "`nAdditional AuditOwner settings to be added:"
+$missingOwnerSettings | ForEach-Object { Write-Host "- $_" -ForegroundColor Yellow }
+
 # Get mailboxes that need updating
 Write-Host "Retrieving mailboxes that need auditing updates..."
-$mailboxesToUpdate = Get-Mailbox -ResultSize Unlimited -Filter {
+$allMailboxes = Get-Mailbox -ResultSize Unlimited -Filter {
     RecipientType -eq "UserMailbox" -and 
-    RecipientTypeDetails -ne "DiscoveryMailbox" -and
-    (AuditEnabled -eq $false -or AuditLogAgeLimit -ne 365)
+    RecipientTypeDetails -ne "DiscoveryMailbox"
+}
+
+$mailboxesToUpdate = @()
+foreach ($mailbox in $allMailboxes) {
+    $needsUpdate = $false
+    
+    # Check if auditing is disabled or retention period is incorrect
+    if (-not $mailbox.AuditEnabled -or 
+        ($mailbox.AuditLogAgeLimit -and [TimeSpan]::Parse($mailbox.AuditLogAgeLimit).Days -ne 365)) {
+        $needsUpdate = $true
+        Write-Verbose "Mailbox $($mailbox.PrimarySmtpAddress) needs update: AuditEnabled=$($mailbox.AuditEnabled), AuditLogAgeLimit=$($mailbox.AuditLogAgeLimit)"
+    } else {
+        # Only check settings if they exist
+        if ($null -ne $mailbox.AuditAdmin -and $null -ne $mailbox.AuditDelegate -and $null -ne $mailbox.AuditOwner) {
+            # Convert current settings to arrays for comparison
+            $currentAdminSettings = $mailbox.AuditAdmin
+            $currentDelegateSettings = $mailbox.AuditDelegate
+            $currentOwnerSettings = $mailbox.AuditOwner
+
+            # Compare settings
+            $missingAdmin = @($desiredAuditAdmin | Where-Object { $_ -notin $currentAdminSettings })
+            $missingDelegate = @($desiredAuditDelegate | Where-Object { $_ -notin $currentDelegateSettings })
+            $missingOwner = @($desiredAuditOwner | Where-Object { $_ -notin $currentOwnerSettings })
+
+            if ($missingAdmin.Count -gt 0 -or $missingDelegate.Count -gt 0 -or $missingOwner.Count -gt 0) {
+                $needsUpdate = $true
+                Write-Verbose "Mailbox $($mailbox.PrimarySmtpAddress) missing settings:"
+                if ($missingAdmin.Count -gt 0) { Write-Verbose "Admin: $($missingAdmin -join ', ')" }
+                if ($missingDelegate.Count -gt 0) { Write-Verbose "Delegate: $($missingDelegate -join ', ')" }
+                if ($missingOwner.Count -gt 0) { Write-Verbose "Owner: $($missingOwner -join ', ')" }
+            }
+        } else {
+            $needsUpdate = $true
+            Write-Verbose "Mailbox $($mailbox.PrimarySmtpAddress) needs update: Missing one or more audit setting groups"
+        }
+    }
+
+    if ($needsUpdate) {
+        $mailboxesToUpdate += $mailbox
+    }
 }
 
 $total = $mailboxesToUpdate.Count
@@ -112,10 +209,10 @@ $mailboxesToUpdate | ForEach-Object -Begin {
 } -Process {
     $batch += $_
     $processed++
-
+    
     if ($batch.Count -eq $batchSize -or $processed -eq $total) {
         Write-Progress -Activity "Updating mailbox auditing" -Status "Processing batch" -PercentComplete (($processed / $total) * 100)
-
+        
         foreach ($mailbox in $batch) {
             try {
                 Set-Mailbox -Identity $mailbox.PrimarySmtpAddress @auditParams -ErrorAction Stop
